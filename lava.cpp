@@ -133,7 +133,7 @@ start:
             break;
         }
         if (is->read_thread_abord) {
-            is->read_thread_abord = 0;
+            is->read_thread_abord = false;
             core->packet_queue_flush();
             goto start;
         }
@@ -171,7 +171,7 @@ start:
                 SDL_Delay(100); /* no error; wait for user input */
                 continue;
             } else {
-                is->read_thread_abord = 0;
+                is->read_thread_abord = false;
                 core->packet_queue_flush();
                 goto start;
             }
@@ -328,7 +328,7 @@ int Core::packet_queue_put(AVPacket *pkt)
     q->last_pkt = pkt1;
     q->nb_packets++;
     q->size += pkt1->pkt.size;
-    no_more_data_in_the_queue = 0;
+    no_more_data_in_the_queue = false;
     // Send signal to queue get function
     SDL_CondSignal(q->cond);
 
@@ -591,4 +591,78 @@ int Core:: audio_resampling(AVCodecContext *audio_decode_ctx,
     }
     return resampled_data_size;
 
+}
+
+void Core::pause()
+{
+    is->paused = !is->paused;
+    SDL_PauseAudio(is->paused);
+}
+
+void Core::stop()
+{
+    if (!is->stopped) {
+        is->stopped = !is->stopped;
+        audio_close();
+        packet_queue_flush();
+        is->duration = 0;
+        is->audio_clock = 0;
+    }
+}
+
+void Core::set_volume(int volume)
+{
+    if (volume < 0 || volume > 100)
+        return;
+    volume = (SDL_MIX_MAXVOLUME / 100) * volume;
+    is->audio_volume = volume;
+}
+
+void Core:: stream_seek(int64_t pos, int flag)
+{
+    if (!is->seek_req) {
+        is->seek_pos = pos;
+        is->seek_flags = flag < 0 ? AVSEEK_FLAG_BACKWARD : 0;
+        is->seek_req = 1;
+    }
+}
+
+void Core::seek(double percent)
+{
+    if (percent < 0 || percent > 100){
+        return;
+    }
+    int incr = 0;
+    double seek_target = (double)is->duration * percent / 100.0;
+    double current_pos = is->audio_clock;
+    incr = seek_target > current_pos ? 1 : -1;
+    stream_seek((int64_t)(seek_target * AV_TIME_BASE), incr);
+}
+
+void Core:: seek_by_sec(int sec)
+{
+    int incr = 0;
+    incr = sec > 0 ? 1 : -1;
+    double pos = is->audio_clock;
+    pos += sec;
+    int duration = is->duration;
+    if (duration < pos || pos < 0) {
+        return;
+    }
+    stream_seek((int64_t)(pos * AV_TIME_BASE), incr);
+}
+
+int Core::audio_duration()
+{
+    return is->duration;
+}
+
+bool Core::is_stopping()
+{
+    return no_more_data_in_the_queue;
+}
+
+double Core::time_position()
+{
+    return is->audio_clock;
 }

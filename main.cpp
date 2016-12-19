@@ -35,14 +35,20 @@ int main(int argc, char *argv[])
     std::string filename(argv[1]);
     core->load_file(filename);
     /* SDL_Delay(10000); */
-    /* SDL_WaitEvent(&event); */
-    int stop = 0;
+    // SDL_WaitEvent(&event);
+    bool stop = false;
     while(!stop){
         if(SDL_PollEvent(&event) > 0){
             switch(event.type) {
                 case SDL_QUIT:
+                    SDL_Log("quit");
                     fprintf(stderr, "quit\n");
-                    stop = 1;
+                    // stop = 1;
+                    break;
+                case SDL_KEYDOWN:
+                    SDL_Log("keydown");
+                    fprintf(stderr, "quit\n");
+                    stop = true;
                     break;
             }
         }

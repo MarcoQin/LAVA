@@ -87,6 +87,16 @@ namespace LAVA {
     public:
         static Core *instance();
         void load_file(std::string &filename);
+        void pause();
+        void stop();
+        void set_volume(int volume);
+        void seek(double percent);
+        void seek_by_sec(int sec);
+        int audio_duration();
+        double time_position();
+        bool is_stopping();
+        ~Core();
+
         AudioState *getState();
         std::string &getInputFileName();
         int audio_open();
@@ -94,7 +104,6 @@ namespace LAVA {
         int packet_queue_put(AVPacket *pkt);
         AVPacket flush_pkt;
         int audio_decode_frame(uint8_t *audio_buf, int buf_size);
-        ~Core();
     private:
         static Core* _instance;
         explicit Core();
@@ -102,6 +111,7 @@ namespace LAVA {
         AudioState *is;
         int stream_open(std::string &input_filename);
         void stream_close();
+        void stream_seek(int64_t pos, int flag);
         std::string input_filename;
         void audio_close();
         int packet_queue_get(AVPacket *pkt, int block);
