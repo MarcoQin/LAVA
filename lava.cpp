@@ -36,7 +36,7 @@ void Core::init_audio()
     flush_pkt.data = (unsigned char *)"FLUSH";
 }
 
-void Core::load_file(std::string &filename)
+void Core::load_file(const std::string &filename)
 {
     if (!is->read_tid) {
         this->stream_open(filename);
@@ -187,7 +187,7 @@ start:
 }
 
 
-int Core::stream_open(std::string &filename)
+int Core::stream_open(const std::string &filename)
 {
     input_filename = filename;
     memset(&is->audio_queue, 0, sizeof(PacketQueue));

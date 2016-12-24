@@ -12,8 +12,8 @@ extern "C" {
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_thread.h>
+#include <SDL.h>
+#include <SDL_thread.h>
 }
 
 #ifdef __MINGW32__
@@ -86,7 +86,7 @@ namespace LAVA {
     class Core {
     public:
         static Core *instance();
-        void load_file(std::string &filename);
+        void load_file(const std::string &filename);
         void pause();
         void stop();
         void set_volume(int volume);
@@ -109,7 +109,7 @@ namespace LAVA {
         explicit Core();
         void init_audio();
         AudioState *is;
-        int stream_open(std::string &input_filename);
+        int stream_open(const std::string &input_filename);
         void stream_close();
         void stream_seek(int64_t pos, int flag);
         std::string input_filename;
