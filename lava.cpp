@@ -11,6 +11,7 @@ Core *Core::instance()
 
 Core::Core()
 {
+    _instance = this;
     init_audio();
     is = new AudioState();
 }
