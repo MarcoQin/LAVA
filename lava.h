@@ -83,6 +83,11 @@ namespace LAVA {
         };
     };
 
+    class AudioCallbackInject {
+    public:
+        virtual void update(uint8_t *stream, int len)=0;
+    };
+
     class Core {
     public:
         static Core *instance();
@@ -104,6 +109,8 @@ namespace LAVA {
         int packet_queue_put(AVPacket *pkt);
         AVPacket flush_pkt;
         int audio_decode_frame(uint8_t *audio_buf, int buf_size);
+        void setAudioCallbackInject(AudioCallbackInject *inst);
+        void audioCallbackUpdate(uint8_t *stream, int len);
     private:
         static Core* _instance;
         explicit Core();
@@ -122,6 +129,7 @@ namespace LAVA {
                             int out_channels,
                             int out_sample_rate,
                             uint8_t *out_buf);
+        AudioCallbackInject *inject = nullptr;
     };
 }
 

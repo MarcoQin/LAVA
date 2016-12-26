@@ -342,7 +342,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
     Core *core = (Core *) userdata;
     AudioState *is = core->getState();
     int len1, audio_size;
-
+    int len_copy = len;
     while (len > 0) {
         if (is->audio_buf_index >= is->audio_buf_size) {
             // We have already sent all our data; get more */
@@ -371,6 +371,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
         stream += len1;
         is->audio_buf_index += len1;
     }
+    core->audioCallbackUpdate(stream, len_copy);
 }
 
 int Core::audio_open()
@@ -666,4 +667,16 @@ bool Core::is_stopping()
 double Core::time_position()
 {
     return is->audio_clock;
+}
+
+void Core::audioCallbackUpdate(uint8_t *stream, int len)
+{
+    if (inject) {
+        inject->update(stream, len);
+    }
+}
+
+void Core::setAudioCallbackInject(AudioCallbackInject *inst)
+{
+    inject = inst;
 }
