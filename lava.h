@@ -83,6 +83,24 @@ namespace LAVA {
         };
     };
 
+    struct CallbackData {
+        SDL_mutex *mutex;
+        SDL_cond *cond;
+        uint8_t *buffer;
+        uint8_t *tmp_buffer;
+        int buffer_size;
+        int sample_rate;
+        int coppyed_len;
+        CallbackData() {
+            mutex = SDL_CreateMutex();
+            cond = SDL_CreateCond();
+            sample_rate = 44100;
+            buffer_size = sample_rate / 20;
+            buffer = (uint8_t*)av_malloc(sizeof(uint8_t)*buffer_size + 1);
+            tmp_buffer = (uint8_t*)av_malloc(sizeof(uint8_t)*buffer_size + 1);
+        };
+    };
+
     class AudioCallbackInject {
     public:
         virtual void update(uint8_t *stream, int len)=0;
@@ -101,6 +119,8 @@ namespace LAVA {
         double time_position();
         bool is_stopping();
         ~Core();
+
+        CallbackData *cbkData;
 
         AudioState *getState();
         std::string &getInputFileName();

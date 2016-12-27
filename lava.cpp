@@ -14,6 +14,7 @@ Core::Core()
     _instance = this;
     init_audio();
     is = new AudioState();
+    cbkData = new CallbackData();
 }
 
 Core::~Core()
@@ -47,6 +48,26 @@ void Core::load_file(const std::string &filename)
         input_filename = filename;
         is->read_thread_abord = true;
     }
+}
+
+
+static int extern_callback_thread(void *data)
+{
+    Core *core = (Core *)data;
+    AudioState *is = core->getState();
+    CallbackData *cbk = core->cbkData;
+    for (;;) {
+        if (is->quit) {
+            fprintf(stderr, "extern_callback_thread EXIT \n");
+            break;
+        }
+        SDL_LockMutex(cbk->mutex);
+        SDL_CondWait(cbk->cond, cbk->mutex);
+        memcpy(cbk->tmp_buffer, cbk->buffer, cbk->buffer_size);
+        SDL_UnlockMutex(cbk->mutex);
+        core->audioCallbackUpdate(cbk->tmp_buffer, cbk->buffer_size);
+    }
+    return 0;
 }
 
 static int read_thread(void *data)
@@ -198,6 +219,7 @@ int Core::stream_open(const std::string &filename)
     is->muted = false;
 
     is->read_tid = SDL_CreateThread(read_thread, "read_thread", this);
+    SDL_CreateThread(extern_callback_thread, "extern_callback_thread", this);
     if (!is->read_tid) {
         av_log(NULL, AV_LOG_FATAL, "SDL_CreateThread(): %s\n", SDL_GetError());
         stream_close();
@@ -340,6 +362,7 @@ int Core::packet_queue_put(AVPacket *pkt)
 void audio_callback(void *userdata, Uint8 *stream, int len)
 {
     Core *core = (Core *) userdata;
+    CallbackData *cbk = core->cbkData;
     AudioState *is = core->getState();
     int len1, audio_size;
     int len_copy = len;
@@ -347,6 +370,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
         if (is->audio_buf_index >= is->audio_buf_size) {
             // We have already sent all our data; get more */
             audio_size = core->audio_decode_frame(is->audio_buf, sizeof(is->audio_buf));
+            fprintf(stderr, "Audio_size: %d\n", audio_size);
             if (audio_size < 0) {
                 // If error, output silence
                 is->audio_buf_size = SDL_AUDIO_MIN_BUFFER_SIZE; // eh...
@@ -357,6 +381,16 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
             is->audio_buf_index = 0;
         }
         len1 = is->audio_buf_size - is->audio_buf_index;
+        fprintf(stderr, "Len1: %d\n", len1);
+        fprintf(stderr, "Need_len: %d\n", len);
+        // core->audioCallbackUpdate((uint8_t*)is->audio_buf + is->audio_buf_index, len1);
+        SDL_LockMutex(cbk->mutex);
+        if (len1 > cbk->buffer_size) {
+            memcpy(cbk->buffer, (uint8_t*)is->audio_buf + is->audio_buf_index, cbk->buffer_size);
+            cbk->coppyed_len = cbk->buffer_size;
+            SDL_CondSignal(cbk->cond);
+        }
+        SDL_UnlockMutex(cbk->mutex);
         if(len1 > len)
             len1 = len;
         if (!is->muted && is->audio_volume == SDL_MIX_MAXVOLUME) {
@@ -371,7 +405,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
         stream += len1;
         is->audio_buf_index += len1;
     }
-    core->audioCallbackUpdate(stream, len_copy);
+    // core->audioCallbackUpdate(stream, len_copy);
 }
 
 int Core::audio_open()
