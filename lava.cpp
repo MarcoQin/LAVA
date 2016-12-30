@@ -370,7 +370,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
         if (is->audio_buf_index >= is->audio_buf_size) {
             // We have already sent all our data; get more */
             audio_size = core->audio_decode_frame(is->audio_buf, sizeof(is->audio_buf));
-            fprintf(stderr, "Audio_size: %d\n", audio_size);
+//            fprintf(stderr, "Audio_size: %d\n", audio_size);
             if (audio_size < 0) {
                 // If error, output silence
                 is->audio_buf_size = SDL_AUDIO_MIN_BUFFER_SIZE; // eh...
@@ -381,8 +381,8 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
             is->audio_buf_index = 0;
         }
         len1 = is->audio_buf_size - is->audio_buf_index;
-        fprintf(stderr, "Len1: %d\n", len1);
-        fprintf(stderr, "Need_len: %d\n", len);
+//        fprintf(stderr, "Len1: %d\n", len1);
+//        fprintf(stderr, "Need_len: %d\n", len);
         // core->audioCallbackUpdate((uint8_t*)is->audio_buf + is->audio_buf_index, len1);
         SDL_LockMutex(cbk->mutex);
         if (len1 > cbk->buffer_size) {
@@ -685,6 +685,12 @@ void Core:: seek_by_sec(int sec)
     if (duration < pos || pos < 0) {
         return;
     }
+    stream_seek((int64_t)(pos * AV_TIME_BASE), incr);
+}
+
+void Core::seek_by_absolute_pos(double pos)
+{
+    int incr = 1;
     stream_seek((int64_t)(pos * AV_TIME_BASE), incr);
 }
 

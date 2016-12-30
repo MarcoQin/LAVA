@@ -80,6 +80,18 @@ namespace LAVA {
             paused = false;
             stopped = false;
             quit = false;
+            read_tid = NULL;
+            format_ctx = NULL;
+            audio_codec_ctx_orig = NULL;
+            audio_codec_ctx = NULL;
+            audio_codec = NULL;
+            audio_pkt_data = NULL;
+            seek_req = 0;
+            seek_pos = 0;
+            seek_flags = 0;
+            audio_volume = 100;
+            audio_clock = 0.0;
+            duration = 0;
         };
     };
 
@@ -115,6 +127,7 @@ namespace LAVA {
         void set_volume(int volume);
         void seek(double percent);
         void seek_by_sec(int sec);
+        void seek_by_absolute_pos(double pos);
         int audio_duration();
         double time_position();
         bool is_stopping();
