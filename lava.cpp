@@ -48,6 +48,7 @@ void Core::load_file(const std::string &filename)
         input_filename = filename;
         is->read_thread_abord = true;
     }
+    is->stopped = false;
 }
 
 
