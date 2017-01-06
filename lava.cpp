@@ -31,7 +31,13 @@ std::vector<std::string> Core::getAudioDevices()
 
 void Core::setAudioDevice(std::string &deviceName)
 {
-    m_deviceName = deviceName;
+    if (m_deviceName != deviceName) {
+        m_deviceName = deviceName;
+        if (!is_stopping()) {
+            audio_close();
+            audio_open();
+        }
+    }
 }
 
 std::string Core::currentAudioDevice()
