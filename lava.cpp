@@ -15,6 +15,28 @@ Core::Core()
     init_audio();
     is = new AudioState();
     cbkData = new CallbackData();
+    m_deviceName = SDL_GetAudioDeviceName(0, 0);
+}
+
+std::vector<std::string> Core::getAudioDevices()
+{
+    std::vector<std::string> devices;
+    int i, count = SDL_GetNumAudioDevices(0);
+    for (i = 0; i < count; ++i) {
+        SDL_Log("Audio device %d: %s", i, SDL_GetAudioDeviceName(i, 0));
+        devices.push_back(SDL_GetAudioDeviceName(i, 0));
+    }
+    return devices;
+}
+
+void Core::setAudioDevice(std::string &deviceName)
+{
+    m_deviceName = deviceName;
+}
+
+std::string Core::currentAudioDevice()
+{
+    return m_deviceName;
 }
 
 Core::~Core()
@@ -259,7 +281,8 @@ void Core::stream_close()
 
 void Core::audio_close()
 {
-    SDL_PauseAudio(1);
+//    SDL_PauseAudio(1);
+    SDL_PauseAudioDevice(dev, 1);
 }
 
 void Core::packet_queue_flush() {
@@ -424,22 +447,25 @@ int Core::audio_open()
 
     if (is->audio_opend) {
         SDL_CloseAudio();
+        if (dev) {
+            SDL_CloseAudioDevice(dev);
+        }
     }
-    // SDL_AudioSpec have;
-    // SDL_AudioDeviceID dev;
-    // dev = SDL_OpenAudioDevice("HD-DAC1", 0, &wanted_spec, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
-    // if (dev == 0) {
-        // SDL_Log("Failed to open audio: %s", SDL_GetError());
-    // } else {
-        // SDL_PauseAudioDevice(dev, 0);
-    // }
-    if (SDL_OpenAudio(&wanted_spec, &spec) < 0) {
-        fprintf(stderr, "SDL_OpenAudio: %s\n", SDL_GetError());
+    fprintf(stderr, "Current Audio Device: %s\n", m_deviceName.c_str());
+    dev = SDL_OpenAudioDevice(m_deviceName.c_str(), 0, &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    if (dev == 0) {
+        fprintf(stderr, "Failed to open audio: %s", SDL_GetError());
         return -1;
     }
+//     if (SDL_OpenAudio(&wanted_spec, &spec) < 0) {
+//         fprintf(stderr, "SDL_OpenAudio: %s\n", SDL_GetError());
+//         return -1;
+//     }
     is->audio_opend = true;
 
-    SDL_PauseAudio(0);
+//    SDL_PauseAudio(0);
+    SDL_PauseAudioDevice(dev, 0);
+
     return 0;
 }
 
@@ -633,7 +659,8 @@ int Core:: audio_resampling(AVCodecContext *audio_decode_ctx,
 void Core::pause()
 {
     is->paused = !is->paused;
-    SDL_PauseAudio(is->paused);
+//    SDL_PauseAudio(is->paused);
+    SDL_PauseAudioDevice(dev, is->paused);
 }
 
 void Core::stop()

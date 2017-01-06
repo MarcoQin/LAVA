@@ -2,6 +2,7 @@
 #define _lava_H
 
 #include <string>
+#include <vector>
 
 extern "C" {
 #include <libavutil/opt.h>
@@ -131,6 +132,9 @@ namespace LAVA {
         int audio_duration();
         double time_position();
         bool is_stopping();
+        std::vector<std::string> getAudioDevices();
+        void setAudioDevice(std::string &deviceName);
+        std::string currentAudioDevice();
         ~Core();
 
         CallbackData *cbkData;
@@ -153,6 +157,8 @@ namespace LAVA {
         void stream_close();
         void stream_seek(int64_t pos, int flag);
         std::string input_filename;
+        std::string m_deviceName;
+        SDL_AudioDeviceID dev;
         void audio_close();
         int packet_queue_get(AVPacket *pkt, int block);
         bool no_more_data_in_the_queue = false;
