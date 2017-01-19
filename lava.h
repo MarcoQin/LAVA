@@ -74,6 +74,7 @@ namespace LAVA {
         int64_t seek_pos;
         int seek_flags;
         bool read_thread_abord;
+        bool useDefaultDevice;
         AudioState() {
             audio_opend = false;
             read_thread_abord = false;
@@ -93,6 +94,7 @@ namespace LAVA {
             audio_volume = 100;
             audio_clock = 0.0;
             duration = 0;
+            useDefaultDevice = true;
         };
     };
 
@@ -158,6 +160,8 @@ namespace LAVA {
         void stream_seek(int64_t pos, int flag);
         std::string input_filename;
         std::string m_deviceName;
+        std::string m_defaultDeviceName;
+        bool useDefaultDevice = true;
         SDL_AudioDeviceID dev;
         void audio_close();
         int packet_queue_get(AVPacket *pkt, int block);

@@ -16,6 +16,7 @@ Core::Core()
     is = new AudioState();
     cbkData = new CallbackData();
     m_deviceName = SDL_GetAudioDeviceName(0, 0);
+    m_defaultDeviceName = m_deviceName;
 }
 
 std::vector<std::string> Core::getAudioDevices()
@@ -33,9 +34,13 @@ void Core::setAudioDevice(std::string &deviceName)
 {
     if (m_deviceName != deviceName) {
         m_deviceName = deviceName;
+
+        audio_close();
+        useDefaultDevice = m_deviceName == m_defaultDeviceName ? true : false;
+        is->useDefaultDevice = useDefaultDevice;
+        audio_open();
+
         if (!is_stopping()) {
-            audio_close();
-            audio_open();
         }
     }
 }
@@ -287,8 +292,11 @@ void Core::stream_close()
 
 void Core::audio_close()
 {
-//    SDL_PauseAudio(1);
-    SDL_PauseAudioDevice(dev, 1);
+    if (useDefaultDevice) {
+        SDL_PauseAudio(1);
+    } else {
+        SDL_PauseAudioDevice(dev, 1);
+    }
 }
 
 void Core::packet_queue_flush() {
@@ -400,7 +408,6 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
         if (is->audio_buf_index >= is->audio_buf_size) {
             // We have already sent all our data; get more */
             audio_size = core->audio_decode_frame(is->audio_buf, sizeof(is->audio_buf));
-//            fprintf(stderr, "Audio_size: %d\n", audio_size);
             if (audio_size < 0) {
                 // If error, output silence
                 is->audio_buf_size = SDL_AUDIO_MIN_BUFFER_SIZE; // eh...
@@ -411,9 +418,6 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
             is->audio_buf_index = 0;
         }
         len1 = is->audio_buf_size - is->audio_buf_index;
-//        fprintf(stderr, "Len1: %d\n", len1);
-//        fprintf(stderr, "Need_len: %d\n", len);
-        // core->audioCallbackUpdate((uint8_t*)is->audio_buf + is->audio_buf_index, len1);
         SDL_LockMutex(cbk->mutex);
         if (len1 > cbk->buffer_size) {
             memcpy(cbk->buffer, (uint8_t*)is->audio_buf + is->audio_buf_index, cbk->buffer_size);
@@ -423,19 +427,18 @@ void audio_callback(void *userdata, Uint8 *stream, int len)
         SDL_UnlockMutex(cbk->mutex);
         if(len1 > len)
             len1 = len;
-        if (!is->muted && is->audio_volume == SDL_MIX_MAXVOLUME) {
+        if (!is->muted && is->audio_volume == SDL_MIX_MAXVOLUME || !is->useDefaultDevice) {
             memcpy(stream, (uint8_t *)is->audio_buf + is->audio_buf_index, len1);
-        }
-        else {
+        } else {
             memset(stream, is->silence_buf[0], len1);
-            if (!is->muted)
+            if (!is->muted) {
                 SDL_MixAudio(stream, (uint8_t *)is->audio_buf + is->audio_buf_index, len1, is->audio_volume);
+            }
         }
         len -= len1;
         stream += len1;
         is->audio_buf_index += len1;
     }
-    // core->audioCallbackUpdate(stream, len_copy);
 }
 
 int Core::audio_open()
@@ -458,19 +461,26 @@ int Core::audio_open()
         }
     }
     fprintf(stderr, "Current Audio Device: %s\n", m_deviceName.c_str());
-    dev = SDL_OpenAudioDevice(m_deviceName.c_str(), 0, &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
-    if (dev == 0) {
-        fprintf(stderr, "Failed to open audio: %s", SDL_GetError());
-        return -1;
+
+    if (useDefaultDevice) {
+        if (SDL_OpenAudio(&wanted_spec, &spec) < 0) {
+            fprintf(stderr, "SDL_OpenAudio: %s\n", SDL_GetError());
+            return -1;
+        }
+    } else {
+        dev = SDL_OpenAudioDevice(m_deviceName.c_str(), 0, &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+        if (dev == 0) {
+            fprintf(stderr, "Failed to open audio: %s", SDL_GetError());
+            return -1;
+        }
     }
-//     if (SDL_OpenAudio(&wanted_spec, &spec) < 0) {
-//         fprintf(stderr, "SDL_OpenAudio: %s\n", SDL_GetError());
-//         return -1;
-//     }
     is->audio_opend = true;
 
-//    SDL_PauseAudio(0);
-    SDL_PauseAudioDevice(dev, 0);
+    if (useDefaultDevice) {
+        SDL_PauseAudio(0);
+    } else {
+        SDL_PauseAudioDevice(dev, 0);
+    }
 
     return 0;
 }
@@ -665,8 +675,11 @@ int Core:: audio_resampling(AVCodecContext *audio_decode_ctx,
 void Core::pause()
 {
     is->paused = !is->paused;
-//    SDL_PauseAudio(is->paused);
-    SDL_PauseAudioDevice(dev, is->paused);
+    if (useDefaultDevice) {
+        SDL_PauseAudio(is->paused);
+    } else {
+        SDL_PauseAudioDevice(dev, is->paused);
+    }
 }
 
 void Core::stop()
@@ -684,7 +697,9 @@ void Core::set_volume(int volume)
 {
     if (volume < 0 || volume > 100)
         return;
-    volume = (SDL_MIX_MAXVOLUME / 100) * volume;
+    fprintf(stderr, "set_volume: %d\n", volume);
+    volume = SDL_MIX_MAXVOLUME * (volume / 100.0f);
+    fprintf(stderr, "set_volume1: %d\n", volume);
     is->audio_volume = volume;
 }
 
